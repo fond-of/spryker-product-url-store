@@ -4,8 +4,9 @@ namespace FondOfSpryker\Zed\ProductUrlStore\Business;
 
 use ArrayObject;
 use Codeception\Test\Unit;
-use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductToUrlInterface;
-use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\StoreToProductStoreUrlBridgeInterface;
+use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToStoreFacadeInterface;
+use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToUrlFacadeInterface;
+use FondOfSpryker\Zed\ProductUrlStore\Persistence\ProductUrlStoreQueryContainerInterface;
 use Generated\Shared\Transfer\LocaleTransfer;
 use Generated\Shared\Transfer\LocalizedAttributesTransfer;
 use Generated\Shared\Transfer\LocalizedUrlTransfer;
@@ -13,21 +14,22 @@ use Generated\Shared\Transfer\ProductAbstractTransfer;
 use Generated\Shared\Transfer\ProductUrlTransfer;
 use Generated\Shared\Transfer\StoreRelationTransfer;
 use Generated\Shared\Transfer\StoreTransfer;
+use Orm\Zed\Url\Persistence\SpyUrl;
+use Orm\Zed\Url\Persistence\SpyUrlQuery;
 use Propel\Runtime\Connection\ConnectionInterface;
 use Spryker\Zed\Product\Business\Product\Url\ProductUrlGeneratorInterface;
 use Spryker\Zed\Product\Dependency\Facade\ProductToLocaleInterface;
 use Spryker\Zed\Product\Dependency\Facade\ProductToTouchInterface;
-use Spryker\Zed\Product\Persistence\ProductQueryContainerInterface;
 
 class ProductUrlManagerTest extends Unit
 {
     /**
-     * @var \Generated\Shared\Transfer\ProductAbstractTransfer $productAbstractTransfer
+     * @var \Generated\Shared\Transfer\ProductAbstractTransfer
      */
     protected $productAbstractTransfer;
 
     /**
-     * @var Spryker\Zed\Product\Dependency\Facade\ProductToLocaleInterface|\PHPUnit\Framework\MockObject\MockObject
+     * @var \Spryker\Zed\Product\Dependency\Facade\ProductToLocaleInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $productLocalFacadeMock;
 
@@ -42,7 +44,7 @@ class ProductUrlManagerTest extends Unit
     protected $productUrlTransfer;
 
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductToUrlInterface|\PHPUnit\Framework\MockObject\MockObject
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToUrlFacadeInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $productUrlFacadeMock;
 
@@ -52,37 +54,32 @@ class ProductUrlManagerTest extends Unit
     protected $productUrlGeneratorMock;
 
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Business\ProductUrlManagerInterface $productUrlManager
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Business\ProductUrlManagerInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $productUrlManagerMock;
 
     /**
-     * @var \Spryker\Zed\Product\Persistence\ProductQueryContainerInterface $productQueryContainerMock
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Persistence\ProductUrlStoreQueryContainerInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $productQueryContainerMock;
 
     /**
-     * @var \Propel\Runtime\Connection\ConnectionInterface\PHPUnit\Framework\MockObject\MockObject $propelRuntimeConnectionMock
+     * @var \Propel\Runtime\Connection\ConnectionInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $propelRuntimeConnectionMock;
 
     /**
-     * @var \Orm\Zed\Url\Persistence\SpyUrlQuery|PHPUnit\Framework\MockObject\MockObject $urlQueryMock
-     */
-    protected $persistenceUrlQueryMock;
-
-    /**
-     * @var \Orm\Zed\Url\Persistence\Base\SpyUrlQuery
+     * @var \Orm\Zed\Url\Persistence\Base\SpyUrlQuery|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $spyPersistenceUrlQueryMock;
 
     /**
-     * @var Orm\Zed\Url\Persistence\Base\SpyUrl
+     * @var \Orm\Zed\Url\Persistence\Base\SpyUrl|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $spyPersistenceUrlMock;
 
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\StoreToProductStoreUrlBridgeInterface
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToStoreFacadeInterface
      */
     protected $storeToProductStoreUrlBridgeInterface;
 
@@ -91,11 +88,7 @@ class ProductUrlManagerTest extends Unit
      */
     public function _before()
     {
-        $this->storeToProductStoreUrlBridgeInterface = $this->getMockBuilder(StoreToProductStoreUrlBridgeInterface::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $this->productAbstractTransferMock = $this->getMockBuilder('\Generated\Shared\Transfer\ProductAbstractTransfer')
+        $this->storeToProductStoreUrlBridgeInterface = $this->getMockBuilder(ProductUrlStoreToStoreFacadeInterface::class)
             ->disableOriginalConstructor()
             ->getMock();
 
@@ -107,37 +100,32 @@ class ProductUrlManagerTest extends Unit
             ->disableOriginalConstructor()
             ->getMock();
 
-        $this->productUrlFacadeMock = $this->getMockBuilder(ProductToUrlInterface::class)
+        $this->productUrlFacadeMock = $this->getMockBuilder(ProductUrlStoreToUrlFacadeInterface::class)
             ->disableOriginalConstructor()
             ->getMock();
 
         $this->productUrlGeneratorMock = $this->getMockBuilder(ProductUrlGeneratorInterface::class)
             ->disableOriginalConstructor()
-            ->setMethods(['generateProductUrl'])
             ->getMock();
 
-        $this->productQueryContainerMock = $this->getMockBuilder(ProductQueryContainerInterface::class)
+        $this->productQueryContainerMock = $this->getMockBuilder(ProductUrlStoreQueryContainerInterface::class)
             ->disableOriginalConstructor()
-            ->setMethods(['getConnection', 'queryUrlByIdProductAbstractIdStoreAndIdLocale'])
             ->getMockForAbstractClass();
 
         $this->propelRuntimeConnectionMock = $this->getMockBuilder(ConnectionInterface::class)
             ->disableOriginalConstructor()
-            ->setMethods(['beginTransaction'])
             ->getMockForAbstractClass();
 
-        $this->spyPersistenceUrlQueryMock = $this->getMockBuilder('\Orm\Zed\Url\Persistence\Base\SpyUrlQuery')
+        $this->spyPersistenceUrlQueryMock = $this->getMockBuilder(SpyUrlQuery::class)
             ->disableOriginalConstructor()
-            ->setMethods(['findOneOrCreate'])
             ->getMock();
 
-        $this->spyPersistenceUrlMock = $this->getMockBuilder('\Orm\Zed\Url\Persistence\Base\SpyUrl')
+        $this->spyPersistenceUrlMock = $this->getMockBuilder(SpyUrl::class)
             ->disableOriginalConstructor()
-            ->setMethods(['toArray'])
             ->getMock();
 
         $attributes = [
-            "url_key" => "url-test-default",
+            'url_key' => 'url-test-default',
         ];
 
         $localizedAttributes = $this->generateLocalizedAttributes();
@@ -182,7 +170,7 @@ class ProductUrlManagerTest extends Unit
             $this->productLocalFacadeMock,
             $this->productQueryContainerMock,
             $this->productUrlGeneratorMock,
-            $this->storeToProductStoreUrlBridgeInterface
+            $this->storeToProductStoreUrlBridgeInterface,
         );
 
         $productUrl = $productUrlManager->createProductUrl($this->productAbstractTransfer);
@@ -214,7 +202,7 @@ class ProductUrlManagerTest extends Unit
             ->willReturn(
                 [
                     'id_url' => 1,
-                ]
+                ],
             );
 
         $this->propelRuntimeConnectionMock->expects($this->atLeastOnce())
@@ -231,7 +219,7 @@ class ProductUrlManagerTest extends Unit
             $this->productLocalFacadeMock,
             $this->productQueryContainerMock,
             $this->productUrlGeneratorMock,
-            $this->storeToProductStoreUrlBridgeInterface
+            $this->storeToProductStoreUrlBridgeInterface,
         );
 
         $productUrl = $productUrlManager->updateProductUrl($this->productAbstractTransfer);
@@ -271,13 +259,13 @@ class ProductUrlManagerTest extends Unit
     {
         $result = [
             '_' => [
-                "url_key" => "product-url-default",
+                'url_key' => 'product-url-default',
             ],
             'de_DE' => [
-                "url_key" => "product-url-de",
+                'url_key' => 'product-url-de',
             ],
             'en_US' => [
-                "url_key" => "product-url-en",
+                'url_key' => 'product-url-en',
             ],
         ];
 
@@ -312,8 +300,8 @@ class ProductUrlManagerTest extends Unit
     {
         $result = [
             1 => [
-                "id_store" => 1,
-                "name" => "Default Store",
+                'id_store' => 1,
+                'name' => 'Default Store',
             ],
         ];
 

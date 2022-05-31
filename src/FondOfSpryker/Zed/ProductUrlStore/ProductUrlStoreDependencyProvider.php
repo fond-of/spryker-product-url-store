@@ -2,13 +2,16 @@
 
 namespace FondOfSpryker\Zed\ProductUrlStore;
 
-use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductToUrlBridge;
-use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\StoreToProductStoreUrlBridge;
+use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToStoreFacadeBridge;
+use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToUrlFacadeBridge;
 use Spryker\Zed\Kernel\Container;
 use Spryker\Zed\Product\ProductDependencyProvider as SprykerProductDependencyProvider;
 
 class ProductUrlStoreDependencyProvider extends SprykerProductDependencyProvider
 {
+    /**
+     * @var string
+     */
     public const FACADE_STORE = 'FACADE_STORE';
 
     /**
@@ -16,7 +19,7 @@ class ProductUrlStoreDependencyProvider extends SprykerProductDependencyProvider
      *
      * @return \Spryker\Zed\Kernel\Container
      */
-    public function provideBusinessLayerDependencies(Container $container)
+    public function provideBusinessLayerDependencies(Container $container): Container
     {
         $container = parent::provideBusinessLayerDependencies($container);
         $container = $this->addStoreFacade($container);
@@ -30,10 +33,23 @@ class ProductUrlStoreDependencyProvider extends SprykerProductDependencyProvider
      *
      * @return \Spryker\Zed\Kernel\Container
      */
+    public function providePersistenceLayerDependencies(Container $container): Container
+    {
+        $container = parent::providePersistenceLayerDependencies($container);
+        $container = $this->addUrlQueryContainer($container);
+
+        return $container;
+    }
+
+    /**
+     * @param \Spryker\Zed\Kernel\Container $container
+     *
+     * @return \Spryker\Zed\Kernel\Container
+     */
     protected function addStoreFacade(Container $container): Container
     {
-        $container[self::FACADE_STORE] = function (Container $container) {
-            return new StoreToProductStoreUrlBridge($container->getLocator()->store()->facade());
+        $container[self::FACADE_STORE] = static function (Container $container) {
+            return new ProductUrlStoreToStoreFacadeBridge($container->getLocator()->store()->facade());
         };
 
         return $container;
@@ -46,8 +62,8 @@ class ProductUrlStoreDependencyProvider extends SprykerProductDependencyProvider
      */
     protected function addUrlFacade(Container $container): Container
     {
-        $container[self::FACADE_URL] = function (Container $container) {
-            return new ProductToUrlBridge($container->getLocator()->url()->facade());
+        $container[self::FACADE_URL] = static function (Container $container) {
+            return new ProductUrlStoreToUrlFacadeBridge($container->getLocator()->url()->facade());
         };
 
         return $container;

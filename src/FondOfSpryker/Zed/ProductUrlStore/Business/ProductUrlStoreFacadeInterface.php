@@ -32,4 +32,15 @@ interface ProductUrlStoreFacadeInterface extends SprykerProductFacadeInterface
      * @return \Generated\Shared\Transfer\ProductUrlTransfer
      */
     public function updateProductAbstractUrl(ProductAbstractTransfer $productAbstractTransfer): ProductUrlTransfer;
+
+    /**
+     * {@inheritDoc}
+     *
+     * @api
+     *
+     * @param \Generated\Shared\Transfer\ProductAbstractTransfer $productAbstractTransfer
+     *
+     * @return bool
+     */
+    public function canPersistProductAbstractUrl(ProductAbstractTransfer $productAbstractTransfer): bool;
 }

@@ -2,6 +2,8 @@
 
 namespace FondOfSpryker\Zed\ProductUrlStore\Persistence;
 
+use FondOfSpryker\Zed\ProductUrlStore\ProductUrlStoreDependencyProvider;
+use Spryker\Zed\Product\Dependency\QueryContainer\ProductToUrlInterface;
 use Spryker\Zed\Product\Persistence\ProductPersistenceFactory;
 
 /**
@@ -10,4 +12,11 @@ use Spryker\Zed\Product\Persistence\ProductPersistenceFactory;
  */
 class ProductUrlStorePersistenceFactory extends ProductPersistenceFactory
 {
+    /**
+     * @return \Spryker\Zed\Product\Dependency\QueryContainer\ProductToUrlInterface
+     */
+    public function getUrlQueryContainer(): ProductToUrlInterface
+    {
+        return $this->getProvidedDependency(ProductUrlStoreDependencyProvider::QUERY_CONTAINER_URL);
+    }
 }

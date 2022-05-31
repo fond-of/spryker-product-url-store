@@ -5,7 +5,7 @@ namespace FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade;
 use Generated\Shared\Transfer\UrlTransfer;
 use Spryker\Zed\Product\Dependency\Facade\ProductToUrlInterface as SprykerProductToUrlInterface;
 
-interface ProductToUrlInterface extends SprykerProductToUrlInterface
+interface ProductUrlStoreToUrlFacadeInterface extends SprykerProductToUrlInterface
 {
     /**
      * @param \Generated\Shared\Transfer\UrlTransfer $urlTransfer

@@ -4,7 +4,7 @@ namespace FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade;
 
 use Spryker\Zed\Store\Business\StoreFacadeInterface;
 
-class StoreToProductStoreUrlBridge implements StoreToProductStoreUrlBridgeInterface
+class ProductUrlStoreToStoreFacadeBridge implements ProductUrlStoreToStoreFacadeInterface
 {
     /**
      * @var \Spryker\Zed\Store\Business\StoreFacadeInterface
@@ -12,8 +12,6 @@ class StoreToProductStoreUrlBridge implements StoreToProductStoreUrlBridgeInterf
     protected $storeFacade;
 
     /**
-     * StoreToProductStoreUrlBridge constructor.
-     *
      * @param \Spryker\Zed\Store\Business\StoreFacadeInterface $storeFacade
      */
     public function __construct(StoreFacadeInterface $storeFacade)
@@ -22,7 +20,7 @@ class StoreToProductStoreUrlBridge implements StoreToProductStoreUrlBridgeInterf
     }
 
     /**
-     * @return \Generated\Shared\Transfer\StoreTransfer[]
+     * @return array<\Generated\Shared\Transfer\StoreTransfer>
      */
     public function getAllStores(): array
     {

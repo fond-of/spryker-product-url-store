@@ -2,8 +2,8 @@
 
 namespace FondOfSpryker\Zed\ProductUrlStore\Business;
 
-use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductToUrlInterface;
-use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\StoreToProductStoreUrlBridgeInterface;
+use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToStoreFacadeInterface;
+use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToUrlFacadeInterface;
 use Generated\Shared\Transfer\LocalizedUrlTransfer;
 use Generated\Shared\Transfer\ProductAbstractTransfer;
 use Generated\Shared\Transfer\ProductUrlTransfer;
@@ -17,36 +17,75 @@ use Spryker\Zed\Product\Persistence\ProductQueryContainerInterface;
 class ProductUrlManager extends SprykerProductUrlMananger implements ProductUrlManagerInterface
 {
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\StoreToProductStoreUrlBridgeInterface
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToStoreFacadeInterface
      */
     protected $storeFacade;
 
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductToUrlInterface
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToUrlFacadeInterface
      */
     protected $urlFacade;
 
     /**
-     * ProductUrlManager constructor.
-     *
-     * @param \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductToUrlInterface $urlFacade
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Persistence\ProductUrlStoreQueryContainerInterface
+     */
+    protected $productQueryContainer;
+
+    /**
+     * @param \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToUrlFacadeInterface $urlFacade
      * @param \Spryker\Zed\Product\Dependency\Facade\ProductToTouchInterface $touchFacade
      * @param \Spryker\Zed\Product\Dependency\Facade\ProductToLocaleInterface $localeFacade
-     * @param \Spryker\Zed\Product\Persistence\ProductQueryContainerInterface $productQueryContainer
+     * @param \FondOfSpryker\Zed\ProductUrlStore\Persistence\ProductUrlStoreQueryContainerInterface $productQueryContainer
      * @param \Spryker\Zed\Product\Business\Product\Url\ProductUrlGeneratorInterface $urlGenerator
-     * @param \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\StoreToProductStoreUrlBridgeInterface $storeFacade
+     * @param \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToStoreFacadeInterface $storeFacade
      */
     public function __construct(
-        ProductToUrlInterface $urlFacade,
+        ProductUrlStoreToUrlFacadeInterface $urlFacade,
         ProductToTouchInterface $touchFacade,
         ProductToLocaleInterface $localeFacade,
         ProductQueryContainerInterface $productQueryContainer,
         ProductUrlGeneratorInterface $urlGenerator,
-        StoreToProductStoreUrlBridgeInterface $storeFacade
+        ProductUrlStoreToStoreFacadeInterface $storeFacade
     ) {
         parent::__construct($urlFacade, $touchFacade, $localeFacade, $productQueryContainer, $urlGenerator);
         $this->storeFacade = $storeFacade;
         $this->urlFacade = $urlFacade;
+        $this->productQueryContainer = $productQueryContainer;
+    }
+
+    /**
+     * @param \Generated\Shared\Transfer\ProductAbstractTransfer $productAbstractTransfer
+     *
+     * @return bool
+     */
+    public function canPersistProductUrl(ProductAbstractTransfer $productAbstractTransfer): bool
+    {
+        $productUrl = $this->urlGenerator->generateProductUrl($productAbstractTransfer);
+
+        $idStores = $productAbstractTransfer->getStoreRelation()->getIdStores();
+
+        foreach ($idStores as $idStore) {
+            foreach ($productUrl->getUrls() as $urlTransfer) {
+                $existingUrlEntity = $this->productQueryContainer
+                    ->queryUrlByIdStoreAndIdLocaleAndUrl(
+                        $idStore,
+                        $urlTransfer->getLocale()->getIdLocale(),
+                        $urlTransfer->getUrl(),
+                    )->findOne();
+
+                if ($existingUrlEntity === null) {
+                    continue;
+                }
+
+                if ($existingUrlEntity->getFkResourceProductAbstract() === $productAbstractTransfer->getIdProductAbstract()) {
+                    continue;
+                }
+
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -145,7 +184,7 @@ class ProductUrlManager extends SprykerProductUrlMananger implements ProductUrlM
         $urlTransfer = $this->getUrlByIdProductAbstractIdStoreAndIdLocale(
             $productAbstractTransfer->requireIdProductAbstract()->getIdProductAbstract(),
             $idStore,
-            $localizedUrlTransfer->getLocale()->getIdLocale()
+            $localizedUrlTransfer->getLocale()->getIdLocale(),
         );
 
         $urlTransfer
@@ -153,6 +192,7 @@ class ProductUrlManager extends SprykerProductUrlMananger implements ProductUrlM
             ->setFkLocale($localizedUrlTransfer->getLocale()->getIdLocale())
             ->setFkStore($idStore)
             ->setFkResourceProductAbstract($productAbstractTransfer->getIdProductAbstract());
+
         return $urlTransfer;
     }
 
@@ -160,13 +200,14 @@ class ProductUrlManager extends SprykerProductUrlMananger implements ProductUrlM
      * @param array $availableStores
      * @param int $idStore
      *
-     * @return \Generated\Shared\Transfer\StoreTransfer[]
+     * @return array<\Generated\Shared\Transfer\StoreTransfer>
      */
     protected function filterStores(array $availableStores, int $idStore): array
     {
         foreach ($availableStores as $index => $availableStore) {
             if ($availableStore->getIdStore() === $idStore) {
                 unset($availableStores[$index]);
+
                 break;
             }
         }
@@ -176,7 +217,7 @@ class ProductUrlManager extends SprykerProductUrlMananger implements ProductUrlM
 
     /**
      * @param \Generated\Shared\Transfer\ProductAbstractTransfer $productAbstractTransfer
-     * @param \Generated\Shared\Transfer\StoreTransfer[] $availableStores
+     * @param array<\Generated\Shared\Transfer\StoreTransfer> $availableStores
      * @param \Generated\Shared\Transfer\ProductUrlTransfer $productUrl
      *
      * @return void
@@ -191,14 +232,21 @@ class ProductUrlManager extends SprykerProductUrlMananger implements ProductUrlM
                 $urlTransfer = $this->createUrlTransfer(
                     $productAbstractTransfer,
                     $availableStore->getIdStore(),
-                    $localizedUrlTransfer
+                    $localizedUrlTransfer,
                 );
 
                 $urlTransfer = $this->urlFacade->findUrl($urlTransfer);
 
-                if ($urlTransfer && $urlTransfer->getIdUrl() && $availableStore->getIdStore() === $urlTransfer->getFkStore()) {
-                    $this->urlFacade->deleteUrl($urlTransfer);
+                if (
+                    $urlTransfer === null
+                    || $urlTransfer->getIdUrl() === null
+                    || $availableStore->getIdStore() !== $urlTransfer->getFkStore()
+                    || $urlTransfer->getFkResourceProductAbstract() !== $productAbstractTransfer->getIdProductAbstract()
+                ) {
+                    continue;
                 }
+
+                $this->urlFacade->deleteUrl($urlTransfer);
             }
         }
     }

@@ -2,10 +2,10 @@
 
 namespace FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade;
 
-interface StoreToProductStoreUrlBridgeInterface
+interface ProductUrlStoreToStoreFacadeInterface
 {
     /**
-     * @return \Generated\Shared\Transfer\StoreTransfer[]
+     * @return array<\Generated\Shared\Transfer\StoreTransfer>
      */
     public function getAllStores(): array;
 }

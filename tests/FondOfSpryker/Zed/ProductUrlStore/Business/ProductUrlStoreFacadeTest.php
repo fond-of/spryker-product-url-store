@@ -4,8 +4,9 @@ namespace FondOfSpryker\Zed\ProductUrlStore\Business;
 
 use ArrayObject;
 use Codeception\Test\Unit;
-use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductToUrlInterface;
-use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\StoreToProductStoreUrlBridgeInterface;
+use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToStoreFacadeInterface;
+use FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToUrlFacadeInterface;
+use FondOfSpryker\Zed\ProductUrlStore\Persistence\ProductUrlStoreQueryContainerInterface;
 use Generated\Shared\Transfer\LocaleTransfer;
 use Generated\Shared\Transfer\LocalizedAttributesTransfer;
 use Generated\Shared\Transfer\LocalizedUrlTransfer;
@@ -13,22 +14,22 @@ use Generated\Shared\Transfer\ProductAbstractTransfer;
 use Generated\Shared\Transfer\ProductUrlTransfer;
 use Generated\Shared\Transfer\StoreRelationTransfer;
 use Generated\Shared\Transfer\StoreTransfer;
-use org\bovigo\vfs\vfsStream;
+use Orm\Zed\Url\Persistence\SpyUrl;
+use Orm\Zed\Url\Persistence\SpyUrlQuery;
 use Propel\Runtime\Connection\ConnectionInterface;
 use Spryker\Zed\Product\Business\Product\Url\ProductUrlGeneratorInterface;
 use Spryker\Zed\Product\Dependency\Facade\ProductToLocaleInterface;
 use Spryker\Zed\Product\Dependency\Facade\ProductToTouchInterface;
-use Spryker\Zed\Product\Persistence\ProductQueryContainerInterface;
 
 class ProductUrlStoreFacadeTest extends Unit
 {
     /**
-     * @var \Generated\Shared\Transfer\ProductAbstractTransfer $productAbstractTransfer
+     * @var \Generated\Shared\Transfer\ProductAbstractTransfer
      */
     protected $productAbstractTransfer;
 
     /**
-     * @var Spryker\Zed\Product\Dependency\Facade\ProductToLocaleInterface|\PHPUnit\Framework\MockObject\MockObject
+     * @var \Spryker\Zed\Product\Dependency\Facade\ProductToLocaleInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $productLocalFacadeMock;
 
@@ -38,7 +39,7 @@ class ProductUrlStoreFacadeTest extends Unit
     protected $productTouchFacadeMock;
 
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductToUrlInterface|\PHPUnit\Framework\MockObject\MockObject
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToUrlFacadeInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $productUrlFacadeMock;
 
@@ -48,37 +49,37 @@ class ProductUrlStoreFacadeTest extends Unit
     protected $productUrlGeneratorMock;
 
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Business\ProductUrlStoreBusinessFactory|\PHPUnit\Framework\MockObject\MockObject $productUrlStoreBusinessFactoryMock
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Business\ProductUrlStoreBusinessFactory|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $productUrlStoreBusinessFactoryMock;
 
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Business\ProductUrlStoreFacade $productUrlStoreFacade
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Business\ProductUrlStoreFacade
      */
     protected $productUrlStoreFacade;
 
     /**
-     * @var \Spryker\Zed\Product\Persistence\ProductQueryContainerInterface $productQueryContainerMock
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Persistence\ProductUrlStoreQueryContainerInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $productQueryContainerMock;
 
     /**
-     * @var \Propel\Runtime\Connection\ConnectionInterface\PHPUnit\Framework\MockObject\MockObject $propelRuntimeConnectionMock
+     * @var \Propel\Runtime\Connection\ConnectionInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $propelRuntimeConnectionMock;
 
     /**
-     * @var \Orm\Zed\Url\Persistence\Base\SpyUrlQuery
+     * @var \Orm\Zed\Url\Persistence\Base\SpyUrlQuery|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $spyPersistenceUrlQueryMock;
 
     /**
-     * @var Orm\Zed\Url\Persistence\Base\SpyUrl
+     * @var \Orm\Zed\Url\Persistence\Base\SpyUrl|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $spyPersistenceUrlMock;
 
     /**
-     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\StoreToProductStoreUrlBridgeInterface
+     * @var \FondOfSpryker\Zed\ProductUrlStore\Dependency\Facade\ProductUrlStoreToStoreFacadeInterface
      */
     protected $storeToProductStoreUrlBridgeInterface;
 
@@ -87,16 +88,7 @@ class ProductUrlStoreFacadeTest extends Unit
      */
     public function _before()
     {
-        $this->vfsStreamDirectory = vfsStream::setup('root', null, [
-            'config' => [
-                'Shared' => [
-                    'stores.php' => file_get_contents(codecept_data_dir('stores.php')),
-                    'config_default.php' => file_get_contents(codecept_data_dir('config_default.php')),
-                ],
-            ],
-        ]);
-
-        $this->storeToProductStoreUrlBridgeInterface = $this->getMockBuilder(StoreToProductStoreUrlBridgeInterface::class)
+        $this->storeToProductStoreUrlBridgeInterface = $this->getMockBuilder(ProductUrlStoreToStoreFacadeInterface::class)
             ->disableOriginalConstructor()
             ->getMock();
 
@@ -108,41 +100,35 @@ class ProductUrlStoreFacadeTest extends Unit
             ->disableOriginalConstructor()
             ->getMock();
 
-        $this->productUrlFacadeMock = $this->getMockBuilder(ProductToUrlInterface::class)
+        $this->productUrlFacadeMock = $this->getMockBuilder(ProductUrlStoreToUrlFacadeInterface::class)
             ->disableOriginalConstructor()
             ->getMock();
 
         $this->productUrlGeneratorMock = $this->getMockBuilder(ProductUrlGeneratorInterface::class)
             ->disableOriginalConstructor()
-            ->setMethods(['generateProductUrl'])
             ->getMock();
 
         $this->productUrlStoreBusinessFactoryMock = $this->getMockBuilder(ProductUrlStoreBusinessFactory::class)
-            ->setMethods(['createProductUrlManager'])
             ->getMock();
 
         $this->propelRuntimeConnectionMock = $this->getMockBuilder(ConnectionInterface::class)
             ->disableOriginalConstructor()
-            ->setMethods(['beginTransaction'])
             ->getMockForAbstractClass();
 
-        $this->productQueryContainerMock = $this->getMockBuilder(ProductQueryContainerInterface::class)
+        $this->productQueryContainerMock = $this->getMockBuilder(ProductUrlStoreQueryContainerInterface::class)
             ->disableOriginalConstructor()
-            ->setMethods(['getConnection', 'queryUrlByIdProductAbstractIdStoreAndIdLocale'])
             ->getMockForAbstractClass();
 
-        $this->spyPersistenceUrlQueryMock = $this->getMockBuilder('\Orm\Zed\Url\Persistence\Base\SpyUrlQuery')
+        $this->spyPersistenceUrlQueryMock = $this->getMockBuilder(SpyUrlQuery::class)
             ->disableOriginalConstructor()
-            ->setMethods(['findOneOrCreate'])
             ->getMock();
 
-        $this->spyPersistenceUrlMock = $this->getMockBuilder('\Orm\Zed\Url\Persistence\Base\SpyUrl')
+        $this->spyPersistenceUrlMock = $this->getMockBuilder(SpyUrl::class)
             ->disableOriginalConstructor()
-            ->setMethods(['toArray'])
             ->getMock();
 
         $attributes = [
-            "url_key" => "url-test-default",
+            'url_key' => 'url-test-default',
         ];
 
         $localizedAttributes = $this->generateLocalizedAttributes();
@@ -172,15 +158,15 @@ class ProductUrlStoreFacadeTest extends Unit
      */
     public function testCreateProductAbstractUrl()
     {
-        $this->productQueryContainerMock->expects($this->atLeastOnce())
+        $this->productQueryContainerMock->expects(static::atLeastOnce())
             ->method('getConnection')
             ->willReturn($this->propelRuntimeConnectionMock);
 
-        $this->propelRuntimeConnectionMock->expects($this->atLeastOnce())
+        $this->propelRuntimeConnectionMock->expects(static::atLeastOnce())
             ->method('beginTransaction')
             ->willReturn(true);
 
-        $this->productUrlGeneratorMock->expects($this->atLeastOnce())
+        $this->productUrlGeneratorMock->expects(static::atLeastOnce())
             ->method('generateProductUrl')
             ->willReturn($this->productUrlTransfer);
 
@@ -190,10 +176,10 @@ class ProductUrlStoreFacadeTest extends Unit
             $this->productLocalFacadeMock,
             $this->productQueryContainerMock,
             $this->productUrlGeneratorMock,
-            $this->storeToProductStoreUrlBridgeInterface
+            $this->storeToProductStoreUrlBridgeInterface,
         );
 
-        $this->productUrlStoreBusinessFactoryMock->expects($this->atLeastOnce())
+        $this->productUrlStoreBusinessFactoryMock->expects(static::atLeastOnce())
             ->method('createProductUrlManager')
             ->willReturn($productUrlManager);
 
@@ -207,31 +193,31 @@ class ProductUrlStoreFacadeTest extends Unit
      */
     public function testUpdateProductAbstractUrl()
     {
-        $this->productQueryContainerMock->expects($this->atLeastOnce())
+        $this->productQueryContainerMock->expects(static::atLeastOnce())
             ->method('getConnection')
             ->willReturn($this->propelRuntimeConnectionMock);
 
-        $this->productQueryContainerMock->expects($this->atLeastOnce())
+        $this->productQueryContainerMock->expects(static::atLeastOnce())
             ->method('queryUrlByIdProductAbstractIdStoreAndIdLocale')
             ->willReturn($this->spyPersistenceUrlQueryMock);
 
-        $this->spyPersistenceUrlQueryMock->expects($this->atLeastOnce())
+        $this->spyPersistenceUrlQueryMock->expects(static::atLeastOnce())
             ->method('findOneOrCreate')
             ->willReturn($this->spyPersistenceUrlMock);
 
-        $this->spyPersistenceUrlMock->expects($this->atLeastOnce())
+        $this->spyPersistenceUrlMock->expects(static::atLeastOnce())
             ->method('toArray')
             ->willReturn(
                 [
                     'id_url' => 1,
-                ]
+                ],
             );
 
-        $this->propelRuntimeConnectionMock->expects($this->atLeastOnce())
+        $this->propelRuntimeConnectionMock->expects(static::atLeastOnce())
             ->method('beginTransaction')
             ->willReturn(true);
 
-        $this->productUrlGeneratorMock->expects($this->atLeastOnce())
+        $this->productUrlGeneratorMock->expects(static::atLeastOnce())
             ->method('generateProductUrl')
             ->willReturn($this->productUrlTransfer);
 
@@ -241,10 +227,10 @@ class ProductUrlStoreFacadeTest extends Unit
             $this->productLocalFacadeMock,
             $this->productQueryContainerMock,
             $this->productUrlGeneratorMock,
-            $this->storeToProductStoreUrlBridgeInterface
+            $this->storeToProductStoreUrlBridgeInterface,
         );
 
-        $this->productUrlStoreBusinessFactoryMock->expects($this->atLeastOnce())
+        $this->productUrlStoreBusinessFactoryMock->expects(static::atLeastOnce())
             ->method('createProductUrlManager')
             ->willReturn($productUrlManager);
 
@@ -283,13 +269,13 @@ class ProductUrlStoreFacadeTest extends Unit
     {
         $result = [
             '_' => [
-                "url_key" => "product-url-default",
+                'url_key' => 'product-url-default',
             ],
             'de_DE' => [
-                "url_key" => "product-url-de",
+                'url_key' => 'product-url-de',
             ],
             'en_US' => [
-                "url_key" => "product-url-en",
+                'url_key' => 'product-url-en',
             ],
         ];
 
@@ -324,8 +310,8 @@ class ProductUrlStoreFacadeTest extends Unit
     {
         $result = [
             1 => [
-                "id_store" => 1,
-                "name" => "Default Store",
+                'id_store' => 1,
+                'name' => 'Default Store',
             ],
         ];
 

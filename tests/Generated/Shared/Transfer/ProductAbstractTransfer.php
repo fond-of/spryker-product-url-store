@@ -1,4 +1,5 @@
 <?php
+
 namespace Generated\Shared\Transfer;
 
 use ArrayObject;
@@ -35,6 +36,7 @@ class ProductAbstractTransfer extends AbstractTransfer
     {
         $this->idProductAbstract = $idProductAbstract;
         $this->modifiedProperties[self::ID_PRODUCT_ABSTRACT] = true;
+
         return $this;
     }
 

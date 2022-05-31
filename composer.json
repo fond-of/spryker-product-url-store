@@ -18,19 +18,27 @@
     {
       "name": "Pascal Fischer",
       "email": "p-fischer@gmx.net"
+    },
+    {
+      "name": "Julian Hyatt",
+      "email": "dev@julianzimmermann.dev"
     }
   ],
+  "scripts": {
+    "ci": "make ci",
+    "codeception": "make codeception",
+    "phpcs": "make phpcs",
+    "phpstan": "make phpstan"
+  },
   "require": {
-    "php": ">=7.1",
-    "spryker/product": "~6.7.0"
+    "php": ">=7.3",
+    "fond-of-spryker/product": "dev-spryker_upgrade",
+    "fond-of-spryker/url-store": "dev-spryker_upgrade"
   },
   "require-dev": {
-    "spryker/code-sniffer": "^0.11",
-    "spryker/development": "^3.6",
-    "codeception/codeception": "^2.3",
-    "mikey179/vfsstream": "^1.6",
-    "phpro/grumphp": "^0.14",
-    "sebastian/phpcpd": "^4.0"
+    "fond-of-codeception/spryker": "^1.0",
+    "spryker/code-sniffer": "*",
+    "spryker-sdk/phpstan-spryker": "*"
   },
   "minimum-stability": "dev",
   "prefer-stable": true,
@@ -42,7 +50,13 @@
   "autoload-dev": {
     "psr-4": {
       "FondOfSpryker\\": "tests/FondOfSpryker/",
-      "Generated\\": "tests/Generated/"
+      "Generated\\": "src/Generated/",
+      "Orm\\Zed\\": "src/Orm/Zed/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
     }
   }
 }
